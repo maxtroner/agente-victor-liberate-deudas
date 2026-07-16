@@ -1,0 +1,10 @@
+modal
+fastapi
+openai
+pydantic
+requests
+upstash-redis
+SpeechRecognition
+pydub
+edge-tts
+openpyxl
