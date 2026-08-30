@@ -19,9 +19,19 @@ import requests
 logger = logging.getLogger(__name__)
 
 ADMIN_NUMBER = "56957709828"
-TESTER_NUMBER = "56940959137"
-ADMIN_OR_TESTER = [ADMIN_NUMBER, TESTER_NUMBER]
+ADMIN_OR_TESTER = [ADMIN_NUMBER]
 AGENT_NUMBER = "56920757276"
+
+def platform_ingest(phone: str, role: str, content: str, message_id: str | None = None, name: str = "", email: str = ""):
+    url = os.getenv("PLATFORM_INGEST_URL", "").strip()
+    secret = os.getenv("PLATFORM_INGEST_SECRET", "").strip()
+    if not url or not secret or not phone or not content:
+        return
+    try:
+        response = requests.post(url, json={"phone": phone, "role": role, "content": content, "message_id": message_id, "name": name, "email": email}, headers={"X-Platform-Ingest-Secret": secret}, timeout=8)
+        response.raise_for_status()
+    except Exception as e:
+        logger.warning("Platform ingest failed: %s", e)
 
 # --- Google Sheets RAG ---
 from google.auth.transport.requests import Request as AuthRequest
@@ -245,7 +255,10 @@ Eres Victor Sanhueza Diaz, abogado chileno experto en insolvencia y reestructura
 
 PERSONALIDAD:
 - Eres Victor, no un bot. Hablas como un abogado chileno real por WhatsApp
-- Saludos: "Buenos dias Sra./Don [Nombre]" o "Buenas tardes Sra./Don [Nombre]"
+- Saludas SOLO UNA VEZ al inicio de la conversacion. Despues de eso NUNCA vuelves a saludar.
+- En cada respuesta posterior respondes DIRECTO a lo que dice el cliente, sin saludos, sin "en que te puedo ayudar".
+- Si conoces el nombre real del cliente, en el PRIMER mensaje usas "Sra./Don [Nombre]". Si no lo conoces, no usas Don ni Doña.
+- NUNCA repitas una respuesta que ya diste. Si el cliente pregunta lo mismo, resumelo diferente y mas corto.
 - Siempre tratas de "usted" al cliente
 - Usas "Oka" o "Oki" para confirmar, a veces con el emoji 👍
 - Cuando recibes documentos dices "Acuso recibo"
@@ -290,9 +303,17 @@ def ask_agent(user_message: str, client_name: str | None = None, history: list |
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "system", "content": f"Base de conocimiento:\n{context}\n\n{greeting}"},
+        {"role": "system", "content": (
+            "REGLA DE PRIORIDAD: La base de conocimiento es la version MAS RECIENTE y "
+            "actualizada de los datos. El historial de la conversacion puede contener "
+            "respuestas antiguas. Si hay CONFLICTO entre el historial y la base de "
+            "conocimiento, responde SIEMPRE con la base de conocimiento. El historial "
+            "solo sirve para entender el contexto de la charla, NUNCA como fuente de datos."
+        )},
     ]
     if history:
-        messages.extend(history[-40:])
+        user_msgs = [m for m in history if m.get("role") == "user"]
+        messages.extend(user_msgs[-40:])
     messages.append({"role": "user", "content": user_content})
 
     response = client.chat.completions.create(
@@ -435,6 +456,8 @@ async def handle_webhook(request: Request):
                     else:
                         text = msg.get("text", {}).get("body", "")
 
+                    platform_ingest(from_number, "user", text, msg_id)
+
                     is_admin_or_tester = from_number in ADMIN_OR_TESTER
 
                     if is_admin_or_tester:
@@ -445,7 +468,8 @@ async def handle_webhook(request: Request):
                             suffix = parts[1].strip() if len(parts) > 1 else ""
 
                             if prefix in ("@ayuda", "@help", "ayuda"):
-                                send_whatsapp_message(from_number, "*Comandos:*\n@reporte - Clientes activos hoy\n@silencio - Apaga alertas\n@N: mensaje - Responde ticket #N (toma control)\n@N: @bot - Devuelve ticket #N al bot\n@ayuda - Esta lista")
+                                modo_actual = "monitor (reenvio activo)" if state.get("modo", "monitor") == "monitor" else "off (reenvio apagado)"
+                                send_whatsapp_message(from_number, f"*Comandos:*\n@reporte - Clientes activos hoy\n@silencio - Apaga el reenvio\n@activar - Enciende el reenvio\n@N: mensaje - Responde ticket #N (toma control)\n@N: @bot - Devuelve ticket #N al bot\n@ayuda - Esta lista\n\nModo actual: {modo_actual}")
                                 return {"status": "ok"}
 
                             if prefix == "@reporte":
@@ -461,7 +485,12 @@ async def handle_webhook(request: Request):
 
                             if prefix == "@silencio":
                                 state["modo"] = "off"
-                                send_whatsapp_message(from_number, "Oki 👍 Alertas desactivadas.")
+                                send_whatsapp_message(from_number, "Oki 👍 Alertas desactivadas. Modo monitor apagado.")
+                                return {"status": "ok"}
+
+                            if prefix == "@activar":
+                                state["modo"] = "monitor"
+                                send_whatsapp_message(from_number, "Oki 👍 Reenvio activado. Modo monitor encendido.")
                                 return {"status": "ok"}
 
                             match = re.match(r'^@(\d+):?\s*(.*)', cmd, re.DOTALL)
@@ -494,13 +523,22 @@ async def handle_webhook(request: Request):
                         tag = f"[🤖 Modo humano] Cliente #{cid}: " if cid else "[🤖 Modo humano] Cliente: "
                         forward = f"{tag}{from_number}\nMensaje: {text}\n\nResponde con: @{cid}: mensaje (o @{cid}: @bot para devolver)"
                         send_whatsapp_message(ADMIN_NUMBER, forward)
-                        if from_number == TESTER_NUMBER:
-                            send_whatsapp_message(from_number, "[Modo humano activo - mensaje reenviado al admin]")
                         continue
 
                     phone_history = leer_historial(from_number)
                     client_name = get_client_name(from_number)
                     is_new = not phone_history and not client_name
+
+                    greeting_words = ["hola", "buenos dias", "buenas tardes", "buenas noches", "buen dia", "saludos", "hey", "hi", "hello", "holaa", "holaaa"]
+                    is_greeting = text.strip().lower().rstrip("!.") in greeting_words
+
+                    if is_greeting:
+                        reply = get_welcome_message() if is_new else "Hola, en que puedo ayudarte?"
+                        send_whatsapp_message(from_number, reply)
+                        phone_history.append({"role": "user", "content": text})
+                        phone_history.append({"role": "assistant", "content": reply})
+                        guardar_historial(from_number, phone_history)
+                        continue
 
                     reply = ask_agent(text, client_name, phone_history if phone_history else None)
 
@@ -550,8 +588,6 @@ async def handle_webhook(request: Request):
                             forward = f"⚠️ #{cid} Cliente: {from_number}\nMensaje: {text}\n\nResponde con: @{cid}: mensaje"
                             send_whatsapp_message(ADMIN_NUMBER, forward)
 
-                        if from_number == TESTER_NUMBER:
-                            send_whatsapp_message(from_number, f"[TEST] Bot no supo responder. Reenviado al admin como #{cid}.")
                     else:
                         clean_reply = reply.replace("[NO_SE]", "", 1).strip() if is_unknown else reply
                         send_whatsapp_message(from_number, clean_reply)
@@ -619,6 +655,24 @@ async def health():
         },
     }
 
+@web_app.post("/lead")
+async def capture_lead(request: Request):
+    """Capture a landing-page lead in the existing Clientes sheet."""
+    data = await request.json()
+    name = str(data.get("name", "")).strip()
+    phone = re.sub(r"[^0-9+]", "", str(data.get("phone", "")))
+    email = str(data.get("email", "")).strip()
+    reason = str(data.get("reason", "")).strip()
+
+    if len(name) < 2 or len(phone.replace("+", "")) < 8 or not reason:
+        raise HTTPException(status_code=422, detail="Datos incompletos")
+    if email and ("@" not in email or "." not in email.split("@")[-1]):
+        raise HTTPException(status_code=422, detail="Correo no válido")
+
+    save_client(phone, name, email)
+    logger.info("Landing lead captured: %s", phone)
+    return {"status": "ok", "message": "Solicitud recibida"}
+
 _last_send = 0
 
 def send_whatsapp_message(to: str, text: str):
@@ -647,6 +701,7 @@ def send_whatsapp_message(to: str, text: str):
 
     req = urllib.request.Request(base_url, data=body, headers=headers, method="POST")
     urllib.request.urlopen(req)
+    platform_ingest(to, "assistant", text)
 
 @app.function(
     image=image,

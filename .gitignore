@@ -5,3 +5,6 @@ __pycache__/
 creds.json
 .env
 *.local
+platform/config.php
+deploy-root/plataforma/config.php
+*.pdf
