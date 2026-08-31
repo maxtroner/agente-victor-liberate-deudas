@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1); require_once __DIR__ . '/../auth.php'; require_role('victor', 'tester'); require_csrf();
+declare(strict_types=1); if (is_file('/home/u628813570/.meta-secrets.php')) require_once '/home/u628813570/.meta-secrets.php'; require_once __DIR__ . '/../auth.php'; require_role('victor', 'tester'); require_csrf();
 $data=json_decode(file_get_contents('php://input'),true) ?: $_POST; $phone=trim((string)($data['phone']??'')); $text=trim((string)($data['content']??''));
 if (!preg_match('/^\+?[0-9]{8,20}$/',$phone)||$text==='') json_response(['error'=>'Datos invalidos'],422);
 $cfg=app_config(); $body=json_encode(['messaging_product'=>'whatsapp','to'=>$phone,'type'=>'text','text'=>['body'=>$text]]);
