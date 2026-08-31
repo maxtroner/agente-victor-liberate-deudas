@@ -1,4 +1,4 @@
-<?php declare(strict_types=1); require_once __DIR__ . '/auth.php'; $user=require_login(); ?>
+<?php declare(strict_types=1); require_once __DIR__ . '/auth.php'; $user=require_login(); $ua=$_SERVER['HTTP_USER_AGENT']??''; if (preg_match('/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i',$ua)) { header('Location: dashmovil.php',true,302); exit; } ?>
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conversaciones | Victor</title><link rel="stylesheet" href="style.css"></head><body>
 <header class="topbar"><div><p class="eyebrow">LIBERATE DE TUS DEUDAS.CL</p><h1>Conversaciones</h1></div><div class="account"><span>Identificado como: <?= htmlspecialchars($user['username']) ?></span><a href="index.php?logout=1">Salir</a></div></header>
 <main class="wa-shell"><aside class="inbox"><div class="inbox-head"><h2>Chats</h2><span id="sync">Sincronizando...</span></div><label class="search"><span>Buscar</span><input id="client-search" placeholder="Nombre o teléfono" autocomplete="off"></label><div id="clients" class="client-list">Cargando...</div></aside>
