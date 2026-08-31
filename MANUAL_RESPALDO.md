@@ -31,7 +31,8 @@ Dashboard Victor -> PHP Hostinger -> Meta Cloud API.
 - Usuarios `victor` y `tester` pueden responder.
 - Respuestas manuales verificadas.
 - Secreto Hostinger fuera de `public_html`.
-- Error de ruta corregido usando `/home/u628813570/.meta-secrets.php`.
+- Error de ruta corregido cargando explícitamente `/home/u628813570/.meta-secrets.php`.
+- Respuestas manuales corregidas para leer el array retornado por ese archivo y usar el Phone Number ID confirmado.
 
 ## Secretos
 
@@ -53,13 +54,17 @@ Para modificar secretos, usar la interfaz de Modal y conservar todas las variabl
 
 ## Hostinger
 
-`platform/config.php` debe cargar el secreto con ruta absoluta:
+El archivo seguro de Hostinger usa este formato (sin compartir el token):
 
 ```php
-$meta_file = '/home/u628813570/.meta-secrets.php';
+<?php
+return [
+    'meta_token' => 'TOKEN_REAL',
+    'meta_phone_id' => '1250371038140082',
+];
 ```
 
-El fallo histórico fue que `getenv('HOME')` estaba vacío en PHP web, generando la URL incorrecta `/v21.0//messages`.
+Debe estar en `/home/u628813570/.meta-secrets.php` con permisos `600`. `platform/api/reply.php` lo carga directamente antes de enviar a Meta. El fallo histórico fue que `getenv('HOME')` estaba vacío en PHP web y el código no interpretaba el array retornado, generando la URL incorrecta `/v21.0//messages`.
 
 ## Uso
 
@@ -80,9 +85,37 @@ El log del sitio está en:
 
 `/home/u628813570/.logs/error_log_liberatedetusdeudas_cl`
 
+## Respaldo y restauración
+
+Consultar el estado:
+
+```powershell
+cd "C:\Users\MaxtronerPC\Documents\agosto 2026\agente victor"
+git status
+git log --oneline -10
+```
+
+Crear y publicar un respaldo después de cambios:
+
+```powershell
+git add .
+git commit -m "Respaldo del proyecto"
+git push origin master
+```
+
+Restaurar una versión concreta (solo si fue solicitado):
+
+```powershell
+git checkout <commit> -- index.html platform
+```
+
+Redeplegar el paquete completo desde la carpeta del proyecto usando Hostinger y luego purgar la caché.
+
+El último respaldo funcional incluye el commit `e9390ce`; la corrección final del lector de secretos está en `e9390ce` y el código de respuesta quedó en `platform/api/reply.php`.
+
 ## Seguridad y próximos pasos
 
 - Rotar el token porque fue expuesto durante la sesión.
 - No guardar tokens, contraseñas ni claves privadas en Obsidian, PDF o GitHub.
-- Instalar Git y configurar el repositorio remoto para publicar el proyecto.
+- Mantener el repositorio remoto `https://github.com/maxtroner/agente-victor-liberate-deudas` actualizado.
 - Crear plantillas Meta para conversaciones fuera de 24 horas.
