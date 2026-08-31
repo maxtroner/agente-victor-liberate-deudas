@@ -7,4 +7,5 @@ creds.json
 *.local
 platform/config.php
 deploy-root/plataforma/config.php
+beta/config.php
 *.pdf
