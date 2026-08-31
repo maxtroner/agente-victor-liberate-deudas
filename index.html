@@ -30,7 +30,7 @@
   <footer class="wrap"><span>Libérate de tus Deudas</span><span>Información clara para decisiones importantes.</span></footer><a class="floating-wa" href="https://wa.me/56920757276?text=Hola%2C%20necesito%20orientaci%C3%B3n%20sobre%20mis%20deudas" target="_blank" rel="noopener">Hablar por WhatsApp</a>
   <script>
      const form=document.querySelector("#contacto-form"), status=document.querySelector(".status");
-    form.addEventListener("submit",async(event)=>{event.preventDefault();const button=form.querySelector("button");button.disabled=true;button.textContent="Enviando...";status.className="status";try{const data=Object.fromEntries(new FormData(form));const response=await fetch("https://maxtroner--liberate-deudas-fastapi-app.modal.run/lead",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});if(!response.ok)throw new Error();form.reset();status.textContent="Recibimos tus datos. Te contactaremos pronto.";status.className="status ok"}catch{status.textContent="No pudimos enviar tus datos. Escríbenos directamente por WhatsApp.";status.className="status error"}finally{button.disabled=false;button.textContent="Solicitar orientación"}});
+     form.addEventListener("submit",(event)=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));const message=["Hola, necesito orientación sobre mis deudas.","","Nombre: "+data.name,"WhatsApp: "+data.phone,data.email?"Correo: "+data.email:"", "Motivo: "+data.reason].filter(Boolean).join("\n");window.open("https://wa.me/56920757276?text="+encodeURIComponent(message),"_blank","noopener");status.textContent="Se abrió WhatsApp con tus datos listos para enviar.";status.className="status ok"});
   </script>
 </body>
 </html>
