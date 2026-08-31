@@ -25,6 +25,7 @@ Dashboard Victor -> PHP Hostinger -> Meta Cloud API.
 - Historial temporal en Redis.
 - Webhook Meta operativo.
 - Dashboard PHP/MySQL operativo.
+- Landing pública operativa en `/index.html` y en la raíz del dominio.
 - Dashboard móvil operativo en `/plataforma/dashmovil.php`.
 - Los dispositivos móviles que abren `dashboard.php` se redirigen automáticamente al dashboard móvil.
 - Usuarios `victor` y `tester` pueden responder.
