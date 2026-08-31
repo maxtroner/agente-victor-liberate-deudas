@@ -25,6 +25,8 @@ Dashboard Victor -> PHP Hostinger -> Meta Cloud API.
 - Historial temporal en Redis.
 - Webhook Meta operativo.
 - Dashboard PHP/MySQL operativo.
+- Dashboard móvil operativo en `/plataforma/dashmovil.php`.
+- Los dispositivos móviles que abren `dashboard.php` se redirigen automáticamente al dashboard móvil.
 - Usuarios `victor` y `tester` pueden responder.
 - Respuestas manuales verificadas.
 - Secreto Hostinger fuera de `public_html`.
@@ -64,6 +66,8 @@ El fallo histórico fue que `getenv('HOME')` estaba vacío en PHP web, generando
 2. Seleccionar una conversación.
 3. Escribir y enviar la respuesta.
 4. El cliente debe haber escrito dentro de las últimas 24 horas para texto libre; después se necesita una plantilla aprobada por Meta.
+
+En celular se puede usar directamente `https://www.liberatedetusdeudas.cl/plataforma/dashmovil.php`. Si se abre por error `dashboard.php`, la detección de Android/iPhone redirige automáticamente a la versión móvil. Dentro de un chat, el botón visual y el botón Atrás del dispositivo regresan al listado.
 
 ## Diagnóstico
 
