@@ -290,9 +290,6 @@ def ask_agent(user_message: str, client_name: str | None = None, history: list |
         base_url="https://api.deepseek.com",
     )
 
-    if not history and not client_name:
-        return get_welcome_message()
-
     context = build_context()
     greeting = f"El cliente se llama {client_name}." if client_name else "Continua la conversacion."
 
@@ -541,12 +538,6 @@ async def handle_webhook(request: Request):
                         continue
 
                     reply = ask_agent(text, client_name, phone_history if phone_history else None)
-
-                    if is_new:
-                        send_whatsapp_message(from_number, reply)
-                        phone_history.append({"role": "assistant", "content": reply})
-                        guardar_historial(from_number, phone_history)
-                        continue
 
                     guardar = re.search(r'\[GUARDAR:\s*(.+?)\s*\|\s*(.+?)\]', reply)
                     if guardar:
