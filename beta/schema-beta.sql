@@ -1,5 +1,0 @@
--- La beta crea estas tablas automáticamente al abrirse por primera vez.
--- Este archivo documenta la estructura para respaldos y migraciones futuras.
-CREATE TABLE beta_availability (weekday TINYINT UNSIGNED PRIMARY KEY, enabled TINYINT(1) NOT NULL DEFAULT 0, start_time TIME NULL, end_time TIME NULL, slot_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 30, buffer_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 10);
-CREATE TABLE beta_appointments (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, phone VARCHAR(20) NOT NULL, title VARCHAR(190) NOT NULL, starts_at DATETIME NOT NULL, ends_at DATETIME NOT NULL, status ENUM('held','confirmed','cancelled','completed','no_show') NOT NULL DEFAULT 'confirmed', notes TEXT NULL, created_by VARCHAR(80) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
-CREATE TABLE beta_summaries (phone VARCHAR(20) PRIMARY KEY, summary TEXT NOT NULL, next_action VARCHAR(190) NULL, updated_by VARCHAR(80) NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
