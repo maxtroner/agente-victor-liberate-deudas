@@ -5,6 +5,7 @@ import re
 import time
 import tempfile
 import urllib.request
+import urllib.parse
 from datetime import datetime
 
 import modal
@@ -32,6 +33,20 @@ def platform_ingest(phone: str, role: str, content: str, message_id: str | None 
         response.raise_for_status()
     except Exception as e:
         logger.warning("Platform ingest failed: %s", e)
+
+def platform_is_human(phone: str) -> bool:
+    url = os.getenv("PLATFORM_INGEST_URL", "").strip()
+    secret = os.getenv("PLATFORM_INGEST_SECRET", "").strip()
+    if not url or not secret or not phone:
+        return False
+    mode_url = url.rsplit("/", 1)[0] + "/mode.php?phone=" + urllib.parse.quote(phone)
+    try:
+        req = urllib.request.Request(mode_url, headers={"X-Platform-Ingest-Secret": secret})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            return json.loads(response.read()).get("mode") == "human"
+    except Exception as e:
+        logger.warning("Platform mode check failed: %s", e)
+        return False
 
 # --- Google Sheets RAG ---
 from google.auth.transport.requests import Request as AuthRequest
@@ -456,6 +471,10 @@ async def handle_webhook(request: Request):
                     platform_ingest(from_number, "user", text, msg_id)
 
                     is_admin_or_tester = from_number in ADMIN_OR_TESTER
+
+                    if not is_admin_or_tester and platform_is_human(from_number):
+                        send_whatsapp_message(ADMIN_NUMBER, f"[Modo humano] Cliente: {from_number}\nMensaje: {text}")
+                        continue
 
                     if is_admin_or_tester:
                         cmd = text.strip()
